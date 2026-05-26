@@ -2,6 +2,18 @@ import os
 import re
 import sqlite3
 import readline
+import signal
+
+def exit_signals(signum, sigframe):
+    print("\n\nexiting...")
+    quit()
+
+signal.signal(signal.SIGINT, exit_signals)
+signal.signal(signal.SIGTERM, exit_signals)
+
+PROMPT = "tracker > "
+BUILTINS = ['q', 'help', 'add-book', 'clear', 'list-books']
+BOOK_PROPS = ['title', 'author']
 
 CONN = sqlite3.connect("books.db")
 CUR = CONN.cursor()
@@ -15,14 +27,14 @@ CREATE TABLE IF NOT EXISTS books (
 '''
 )
 
-PROMPT = "tracker > "
-BUILTINS = ['q', 'help', 'add-book', 'clear', 'list-books']
-
 def quit():
     CONN.close()
     exit()
 
-def help():
+def help(*args):
+    if len(args) != 0:
+        print('error: \'help\' does not take any arguments')
+        return
     print(
 '''
 add-book: add a book
@@ -36,6 +48,11 @@ def add_book():
     title = input('title: ')
     author = input('author: ')
 
+    confirmation = input(f'is this information correct? (y/N)\ntitle: {title}\nauthor: {author}\n')
+    if confirmation.lower != 'y':
+        print('book not added')
+        return
+
     CUR.execute(
     '''
     INSERT INTO books VALUES
@@ -47,29 +64,30 @@ def add_book():
 def list_books():
     res = CUR.execute("SELECT title, author FROM books") 
     num = 0
-    book = res.fetchone()
-    while book is not None:
-        print(f'{num}: {book[0]} by {book[1]}')
+    books = res.fetchall()
+    for book in books:
+        print(f'{num}: "{book[0]}" by {book[1]}')
         book = res.fetchone()
+        num += 1
 
 if __name__ == "__main__":
     while(1):
-        print(PROMPT, end='')
-        message = input()
+        message = input(PROMPT)
         
         #tokenize input
         message = message.strip()
-        tokens = re.split(' \n\r\t', message)
+        tokens = re.split(r'[ \n\r\t]+', message)
+        print(tokens)
         if tokens[0] == '':
             continue
-        if message not in BUILTINS:
-            print(f"{tokens[0]}: Command not found")
+        if tokens[0] not in BUILTINS:
+            print(f"{tokens[0]}: command not found")
     
         match tokens[0]:
             case 'q':
                 quit()
             case 'help':
-                help()
+                help(*tokens[1:])
             case 'add-book':
                 add_book()
             case 'clear':

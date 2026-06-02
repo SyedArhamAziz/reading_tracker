@@ -50,7 +50,8 @@ def help(*args):
 clear: clear the terminal
 help: prints out list of commands
 list-books: lists out the added books and their authors
-q: quit''')
+remove-books: removes book(s)
+quit: exit the program''')
 
 def add_book(*args):
     title = ''
@@ -79,7 +80,7 @@ def add_book(*args):
         return
 
     confirmation = input(f'\nis this information correct? \ntitle: {title}\nauthor: {author}\n(y/N): ')
-    if confirmation.lower != 'y':
+    if confirmation.strip().lower() != 'y':
         print('book not added')
         return
 
@@ -140,6 +141,7 @@ def remove_books(*args):
         for i in ids:
             res = CUR. execute("DELETE FROM books WHERE id=?", (i,))
             res.fetchone()
+        CONN.commit()
         print('book(s) removed successfully')
         return
     print('book(s) not removed')

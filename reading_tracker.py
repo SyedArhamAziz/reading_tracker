@@ -3,6 +3,7 @@ import re
 import sqlite3
 import readline
 import signal
+import subprocess
 
 def exit_signals(signum, sigframe):
     print("\n\nexiting...")
@@ -45,43 +46,68 @@ def help(*args):
         print('error: \'help\' does not take any arguments')
         return
     print(
-'''
-add-book: add a book
+'''add-book: add a book
 clear: clear the terminal
 help: prints out list of commands
 list-books: lists out the added books and their authors
-q: quit
-''')
+q: quit''')
 
 def add_book(*args):
+    title = ''
+    author = ''
     if len(args) == 0:
         title = input('title: ')
         author = input('author: ')
 
-        confirmation = input(f'is this information correct? (y/N)\ntitle: {title}\nauthor: {author}\n')
-        if confirmation.lower != 'y':
-            print('book not added')
-            return
+    else: 
+        i = 0
+        while i < len(args):
+            if args[i][0] != '-' or args[i][1:] not in BOOK_PROPS:
+                print(f'error: \'{args[i]}\' is not an argument for \'add-book\'')
+                return
+            if i >= len(args) - 1:
+                print(f'error: no argument given for {args[i][1:]}')
+                return
+            match args[i][1:]:
+                case 'title':
+                    title = args[i+1]
+                case 'author':
+                    author = args[i+1]
+            i += 2
+    if title == '':
+        print('error: no title given')
+        return
 
-        CUR.execute(
-        '''
-        INSERT INTO books VALUES
-            (NULL, ?, ?)
-        ''', (title, author)
-        )
-        CONN.commit()
+    confirmation = input(f'\nis this information correct? (y/N)\ntitle: {title}\nauthor: {author}\n')
+    if confirmation.lower != 'y':
+        print('book not added')
+        return
 
-    for arg in args:
-        print(arg)
+    CUR.execute(
+    '''
+    INSERT INTO books VALUES
+        (NULL, ?, ?)
+    ''', (title, author)
+    )
+    CONN.commit()
+    print('book added successfully')
+    return
+        
 
 def list_books():
-    res = CUR.execute("SELECT title, author FROM books") 
-    num = 0
+    res = CUR.execute("SELECT id, title, author FROM books") 
     books = res.fetchall()
+    s = ''
     for book in books:
-        print(f'{num}: "{book[0]}" by {book[1]}')
+        s += f'{book[0]}, {book[1]}, {book[2]}\n'
         book = res.fetchone()
-        num += 1
+    result = subprocess.run(
+            ["column", '-t', '-N', 'ID, Title, Author', '-s,'],
+            input = s,
+            text = True,
+            capture_output = True
+            )
+    print(result.stdout)
 
 if __name__ == "__main__":
     while(1):
@@ -94,6 +120,7 @@ if __name__ == "__main__":
             continue
         if tokens[0] not in BUILTINS:
             print(f"{tokens[0]}: command not found")
+            print("enter 'help' to view commands")
     
         match tokens[0]:
             case 'quit':

@@ -13,7 +13,7 @@ signal.signal(signal.SIGINT, exit_signals)
 signal.signal(signal.SIGTERM, exit_signals)
 
 PROMPT = "tracker > "
-BUILTINS = ['quit', 'help', 'add-book', 'clear', 'list-books']
+BUILTINS = ['quit', 'help', 'add-book', 'clear', 'list-books', 'remove-books']
 BOOK_PROPS = ['title', 'author']
 
 CONN = sqlite3.connect("books.db")
@@ -78,7 +78,7 @@ def add_book(*args):
         print('error: no title given')
         return
 
-    confirmation = input(f'\nis this information correct? (y/N)\ntitle: {title}\nauthor: {author}\n')
+    confirmation = input(f'\nis this information correct? \ntitle: {title}\nauthor: {author}\n(y/N): ')
     if confirmation.lower != 'y':
         print('book not added')
         return
@@ -109,6 +109,42 @@ def list_books():
             )
     print(result.stdout)
 
+def remove_books(*args):
+    ids = []
+    if len(args) == 0:
+        response = input("no book IDs given, would you like to view a list? (Y/n) ")
+        if response.lower() == 'n':
+            return
+        list_books()
+        response = input("enter ID(s) of the book(s) you wish to remove: ")
+        if response == '':
+            print("error: no ID(s) given")
+            return
+        ids = response.split(' ')
+    else:
+        ids = list(args)
+    try:
+        ids = [int(x) for x in ids]
+    except:
+        print("error: invalid ID(s) given, make ensure the values are numerical and space-separated")
+    books = []
+    for i in ids:
+        res = CUR.execute("SELECT title, author FROM books WHERE id=?", (i,))
+        book = res.fetchone()
+        books.append((book[0], book[1]))
+    
+    print("Remove the following book(s)?")
+    for book in books: print(f"\"{book[0]}\" by {book[1]}")
+    confirmation = input('y/N: ')
+    if confirmation == 'y':
+        for i in ids:
+            res = CUR. execute("DELETE FROM books WHERE id=?", (i,))
+            res.fetchone()
+        print('book(s) removed successfully')
+        return
+    print('book(s) not removed')
+
+
 if __name__ == "__main__":
     while(1):
         message = input(PROMPT)
@@ -133,4 +169,5 @@ if __name__ == "__main__":
                 clear(*tokens[1:])
             case 'list-books':
                 list_books()
-
+            case 'remove-books':
+                remove_books(*tokens[1:])

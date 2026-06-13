@@ -48,6 +48,7 @@ def help(*args):
     print(
 '''add-book: add a book
 clear: clear the terminal
+edit-books: edit books
 help: prints out list of commands
 list-books: lists out the added books and their authors
 remove-books: removes book(s)
@@ -94,6 +95,48 @@ def add_book(*args):
     print('book added successfully')
     return
         
+def edit_books(*args):
+    ids = []
+    if len(args) == 0:
+        response = input("no book IDs given, would you like to view a list? (Y/n) ")
+        if response.lower() == 'n':
+            return
+        list_books()
+        response = input("enter ID(s) of the book(s) you wish to edit: ")
+        if response == '':
+            print("error: no ID(s) given")
+            return
+        ids = response.split(' ')
+    else:
+        ids = list(args)
+    try:
+        ids = [int(x) for x in ids]
+    except:
+        print("error: invalid ID(s) given, make ensure the values are numerical and space-separated")
+        return
+    for i in ids:
+        res = CUR.execute("SELECT title, author FROM books WHERE id=?", (i,))
+        book = res.fetchone()
+        if book is None:
+            print(f"{i} is not a valid id, skipping...")
+            continue
+        new_title = book[0]
+        new_author = book[1]
+        response = input(f'edit {book[0]} by {book[1]}? (Y/n): ')
+        if response.lower() == 'n':
+            continue
+        response = input(f'would you like to change the title: {book[0]}? (y/N): ')
+        if response.lower() == 'y':
+            new_title = input("enter a new title: ")
+        response = input(f'would you like to change the author: {book[0]}? (y/N): ')
+        if response.lower() == 'y':
+            new_author = input("enter a new author: ")
+        response = input(f"is the following information correct? (y/N):\ntitle: {new_title}\nauthor: {new_author}\n")
+        if response.lower() == 'n':
+            print('cancelling...')
+            continue
+        CUR.execute("UPDATE books SET author = ?, title = ? WHERE id = ?", (new_author, new_title, i))
+        CONN.commit()
 
 def list_books():
     res = CUR.execute("SELECT id, title, author FROM books") 
@@ -139,28 +182,23 @@ def remove_books(*args):
     confirmation = input('y/N: ')
     if confirmation == 'y':
         for i in ids:
-            res = CUR. execute("DELETE FROM books WHERE id=?", (i,))
+            res = CUR.execute("DELETE FROM books WHERE id=?", (i,))
             res.fetchone()
         CONN.commit()
         print('book(s) removed successfully')
         return
     print('book(s) not removed')
 
-
 if __name__ == "__main__":
     while(1):
         message = input(PROMPT)
         
-        #tokenize input
         message = message.strip()
         tokens = re.split(r'[ \n\r\t]+', message)
-        if tokens[0] == '':
-            continue
-        if tokens[0] not in BUILTINS:
-            print(f"{tokens[0]}: command not found")
-            print("enter 'help' to view commands")
-    
+
         match tokens[0]:
+            case '':
+                continue
             case 'quit':
                 quit(*tokens[1:])
             case 'help':
@@ -173,3 +211,9 @@ if __name__ == "__main__":
                 list_books()
             case 'remove-books':
                 remove_books(*tokens[1:])
+            case 'edit-books':
+                edit_books(*tokens[1:])
+            case _:
+                print(f"{tokens[0]}: command not found")
+                print("enter 'help' to view commands")
+
